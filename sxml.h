@@ -64,7 +64,19 @@ typedef struct __sxml_buffer_t
 	int offset; 
 }sxml_buffer_t,*sxml_buffer_ht;
 
+typedef struct __sxml_file_line_t
+{
+	const char* start;
+	long long line;
+	long long len;
+}sxml_file_line_t;
 
+typedef struct __sxml_file_info_t
+{
+	sxml_file_line_t* line_info;
+	long long line_count;
+	//const char* filename;
+}sxml_file_info_t;
 
 XEXPORT XAPI sxml_doc_t* sxml_doc_new(const char* filename, const char* version, const char* charset);
 XEXPORT XAPI sxml_node_t* sxml_node_new(const char* name);
@@ -88,6 +100,17 @@ XEXPORT XAPI void sxml_doc_free(sxml_doc_t* doc);
 
 XEXPORT XAPI int sxml_save2file(sxml_doc_t* doc, const char* filename);
 XEXPORT XAPI int sxml_save(sxml_doc_t* doc);
+
+XEXPORT XAPI sxml_file_info_t* sxml_get_file_info(const char* value);
+XEXPORT XAPI void sxml_print_file_info(sxml_file_info_t* info);
+XEXPORT XAPI void sxml_free_file_info(sxml_file_info_t** info);
+
+XEXPORT XAPI sxml_doc_t* sxml_doc_parse(const char* filename, const char* value);
+XEXPORT XAPI sxml_doc_t* sxml_parse(const char* filename);
+
+//const char* check_skip(const char* in, const char* str);
+//const char* copy_until(char* to, const char* from, const char* flag);
+const char* skip_line(const char *in);
 
 #endif
 
