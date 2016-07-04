@@ -4,7 +4,7 @@ CC=gcc
 #CPPFLAGS=[-fpermissive] -Wwrite-strings
 #gcc -shared -fPIC $(@:dll=o) -static-libgcc -o $@
 
-CPPFLAGS=-Wwrite-strings
+CPPFLAGS= 
 
 all:sxml.a sxml.dll test
 sxml.o:
@@ -12,7 +12,7 @@ sxml.o:
 
 sxml.a:sxml.o
 	ar -rcs $@ $^
-sxml.dll:sxml.o
+sxml.dll:sxml.c
 	gcc -shared -fPIC -static-libgcc $^ -o $@
 	
 test:test.c sxml.a

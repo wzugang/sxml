@@ -1,27 +1,3 @@
 <?xml version="1.0" encoding="GB2312"?>
-<root age="25" sex="man">
-    <score 语文="95" 数学="100" 英语="98">
-    </score>
-<![CDATA[hello world]]>
-<![CDATA[hello world]]>
-<![CDATA[hello world]]>
-    <raw>
-
-rawdata
-    
-    </raw>
-    <lua>
-
-function fun()
-	int a;
-	a = 10;
-	return a;
-end
-    
-    </lua>
-
-    内部字符串
-    
-<!--注释-->
-    <empty/>
-</root>
+<root  age=="25"" sex=="man"">
+</root >

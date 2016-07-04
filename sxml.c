@@ -405,8 +405,7 @@ XEXPORT XAPI sxml_node_t* sxml_rawdata_new(const char* name, const void* data, l
 XSTATIC sxml_attr_t* sxml_attr_item_new()
 {
 	sxml_attr_t* attr = (sxml_attr_t*)sxml_alloc(sizeof(sxml_attr_t));
-	if(!attr)return NULL; 	
-	memset(attr,0,sizeof(sxml_attr_t));
+	if(!attr)return NULL;
 	QUEUE_INIT(&attr->aq);
 	return attr;
 }
@@ -693,8 +692,11 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 					++numentries;
 				}
 				entries = (char**)sxml_alloc(numentries*sizeof(char*));
-				if(!entries) return NULL;			
-				entries[i++] = sxml_attr_print(node, p); 
+				if(!entries) return NULL;
+				if(!QUEUE_ISEMPTY(&node->attrs))
+				{				
+					entries[i++] = sxml_attr_print(node, p);
+				}					
 				QUEUE_FOREACH(q, &node->children)
 				{
 					child = (sxml_node_t*)QUEUE_DATA(q,sxml_node_t,nq);
@@ -726,10 +728,20 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 						*tmp = ' '; ++tmp;
 					}
 				}
-				tmp += sprintf(tmp, "<%s%s>\n", node->name, entries[0]);
-				for(i = 1; i < numentries; i++)
+				if(!QUEUE_ISEMPTY(&node->attrs))
 				{
-					tmp += sprintf(tmp, "%s", entries[i]);
+					tmp += sprintf(tmp, "<%s%s>\n", node->name, entries[0]);
+					for(i = 1; i < numentries; i++)
+					{
+						tmp += sprintf(tmp, "%s", entries[i]);
+					}
+				}else
+				{
+					tmp += sprintf(tmp, "<%s>\n", node->name);
+					for(i = 0; i < numentries; i++)
+					{
+						tmp += sprintf(tmp, "%s", entries[i]);
+					}
 				}
 				//后缩进
 				if(node->indent)
@@ -998,8 +1010,7 @@ XEXPORT XAPI const char* sxml_attr_parse(sxml_attr_t* attr, const char* value)
 		{
 			break;
 		}
-		memset(attr->name, 0 ,c-temp+1);
-		snprintf(attr->name, c-temp, "%s",temp);
+		snprintf(attr->name, c-temp+1, "%s",temp);
 		temp = c;
 		c = string_index_of_any(temp,"\"");
 		if(!c)break;
@@ -1011,8 +1022,7 @@ XEXPORT XAPI const char* sxml_attr_parse(sxml_attr_t* attr, const char* value)
 		{
 			break;
 		}
-		memset(attr->value, 0 ,c-temp+1);
-		snprintf(attr->value, c-temp, "%s",temp);
+		snprintf(attr->value, c-temp+1, "%s",temp);
 		QUEUE_INIT(&attr->aq);
 		return c+1;
 	}while(0);
@@ -1151,7 +1161,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 			printf("sxml_alloc error\n");
 			break;
 		}
-		snprintf(node->name, c-value-1, "%s",value+1);
+		snprintf(node->name, c-value, "%s",value+1);
 		pstr = temp = c;
 		if(*c == ' ')//带属性节点
 		{
