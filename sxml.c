@@ -1010,7 +1010,8 @@ XEXPORT XAPI const char* sxml_attr_parse(sxml_attr_t* attr, const char* value)
 		{
 			break;
 		}
-		snprintf(attr->name, c-temp+1, "%s",temp);
+		memcpy(attr->name, temp, c-temp);
+		//snprintf(attr->name, c-temp+1, "%s", temp);//snprintf不靠谱
 		temp = c;
 		c = string_index_of_any(temp,"\"");
 		if(!c)break;
@@ -1022,7 +1023,8 @@ XEXPORT XAPI const char* sxml_attr_parse(sxml_attr_t* attr, const char* value)
 		{
 			break;
 		}
-		snprintf(attr->value, c-temp+1, "%s",temp);
+		memcpy(attr->name, temp, c-temp);
+		//snprintf(attr->value, c-temp+1, "%s",temp);
 		QUEUE_INIT(&attr->aq);
 		return c+1;
 	}while(0);
@@ -1136,7 +1138,8 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 					printf("sxml_alloc error\n");
 					break;
 				}
-				snprintf(node->name, INNER_LEN+1, "%s",INNER_NAME);
+				memcpy(node->name, INNER_NAME, INNER_LEN);
+				//snprintf(node->name, INNER_LEN+1, "%s",INNER_NAME);
 				
 				node->data = sxml_alloc(c-value+1);
 				if(!node->data)
@@ -1161,7 +1164,8 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 			printf("sxml_alloc error\n");
 			break;
 		}
-		snprintf(node->name, c-value, "%s",value+1);
+		memcpy(node->name, value+1, c-value-1);
+		//snprintf(node->name, c-value, "%s",value+1);
 		pstr = temp = c;
 		if(*c == ' ')//带属性节点
 		{
