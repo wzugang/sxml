@@ -7,7 +7,11 @@
 //定义一个指针数组类型
 typedef void *QUEUE[2];
 
+#ifdef      _WIN32
 #define		XAPI	__declspec(dllexport)
+#else
+#define		XAPI
+#endif
 
 #ifdef __cplusplus
 #define 	XEXPORT extern "C"
@@ -108,9 +112,6 @@ XEXPORT XAPI void sxml_free_file_info(sxml_file_info_t** info);
 XEXPORT XAPI sxml_doc_t* sxml_doc_parse(const char* filename, const char* value);
 XEXPORT XAPI sxml_doc_t* sxml_parse(const char* filename);
 
-//const char* check_skip(const char* in, const char* str);
-//const char* copy_until(char* to, const char* from, const char* flag);
-const char* skip_line(const char *in);
 
 #endif
 

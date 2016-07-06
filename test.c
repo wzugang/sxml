@@ -61,8 +61,8 @@ int main()
 	pstr = tmp;
 	printf("%s\n", tmp);
 	printf("%s\n", tmp2);
-	while((pstr = skip_line(pstr)))line++;
-	printf("\n\n%d\n\n", line);
+	//while((pstr = skip_line(pstr)))line++;
+	//printf("\n\n%d\n\n", line);
 	//printf("\n\n%s\n\n",check_skip("<?xml version=\"1.0\" encoding=\"GB2312\"?>","<?xml version=\\\"")?"YES":"NO");
 	//copy_until(buff,"<?xml version=\"1.0\" encoding=\"GB2312\"?>","\" ");
 	//printf("\n\n%s\n\n",buff);

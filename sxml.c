@@ -7,7 +7,7 @@
 
 #include "sxml.h"
 
-//名域处理、特殊节点扩展（#name,对应开始结束节点标志），innertext与rawdata转换，节点查找，后期完善
+//名域处理、特殊节点扩展（#name,对应开始结束节点标志），innertext与rawdata转换，节点查找，多文件引用扩展。后期完善
 //完善入参检查
 
 //item为引用节点
@@ -169,7 +169,7 @@ XSTATIC long long check(const char* in, const char* str){ return strstr(in, str)
 //拷贝到字符串为止
 XSTATIC const char* copy_until(char* to, const char* from, const char* flag){ const char* pstr; const char* start; long long len=strlen(flag); if(start = strstr(from, flag)){ pstr = from; while(pstr < start)*to = *pstr, pstr++, to++; return start+len;}else{return NULL;}} 
 //跳到下一行位置
-const char* skip_line(const char *in){while (in && *in && *in != '\n')in++; return (in && *in == '\n')?++in:NULL;}
+XSTATIC const char* skip_line(const char *in){while (in && *in && *in != '\n')in++; return (in && *in == '\n')?++in:NULL;}
 
 
 XSTATIC void*do_alloc(size_t size)
@@ -181,7 +181,7 @@ XSTATIC void*do_alloc(size_t size)
 	memset(retptr, 0, real_size);
 	return retptr;
 }
-const char* string_index_of_any(const char* str, const char* cs)
+XSTATIC const char* string_index_of_any(const char* str, const char* cs)
 {
 	long long i,j,len=strlen(str),count=strlen(cs);
 	for(i = 0; i < len; i++)
@@ -197,8 +197,8 @@ const char* string_index_of_any(const char* str, const char* cs)
 	return NULL;
 }
 
-const char *sxml_error_pick(void) {return sxml_error;}
-void sxml_error_clean(void) {sxml_error=NULL;}
+XSTATIC const char *sxml_error_pick(void) {return sxml_error;}
+XSTATIC void sxml_error_clean(void) {sxml_error=NULL;}
 
 XSTATIC int string_expand(int x) { return XALIGN(x,4);}
 
