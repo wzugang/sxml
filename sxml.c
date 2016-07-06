@@ -1023,7 +1023,7 @@ XEXPORT XAPI const char* sxml_attr_parse(sxml_attr_t* attr, const char* value)
 		{
 			break;
 		}
-		memcpy(attr->name, temp, c-temp);
+		memcpy(attr->value, temp, c-temp);
 		//snprintf(attr->value, c-temp+1, "%s",temp);
 		QUEUE_INIT(&attr->aq);
 		return c+1;

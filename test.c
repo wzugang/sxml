@@ -14,7 +14,7 @@ end"
 int main()
 {
 	sxml_file_info_t* info;
-	char* tmp;
+	char* tmp,*tmp2;
 	const char* pstr;
 	int line=1;
 	char buff[128]={0};
@@ -56,22 +56,24 @@ int main()
 	
 	sxml_add_node2doc(doc,node);
 	
-	//printf("%s\n",sxml_doc_print_buffered(doc,16));
 	tmp = sxml_doc_print(doc);
+	tmp2 = sxml_doc_print_buffered(doc,16);
 	pstr = tmp;
 	printf("%s\n", tmp);
+	printf("%s\n", tmp2);
 	while((pstr = skip_line(pstr)))line++;
 	printf("\n\n%d\n\n", line);
 	//printf("\n\n%s\n\n",check_skip("<?xml version=\"1.0\" encoding=\"GB2312\"?>","<?xml version=\\\"")?"YES":"NO");
 	//copy_until(buff,"<?xml version=\"1.0\" encoding=\"GB2312\"?>","\" ");
 	//printf("\n\n%s\n\n",buff);
 	
-	//sxml_save(doc);
+	sxml_save(doc);
 
 	
 	sxml_doc_free(doc);
 	doc = NULL;
 	free(tmp);
+	free(tmp2);
 	
 	//printf("aaaa...................\n");
 	
@@ -79,10 +81,13 @@ int main()
 	
 	parser = sxml_parse("a.xml");
 	
-	//tmp = sxml_doc_print(parser);//有问题，内存越界
+	
 	tmp = sxml_doc_print_buffered(parser,16);
+	tmp2 = sxml_doc_print(parser);
 	printf("%s\n", tmp);
+	printf("%s\n", tmp2);
 	free(tmp);
+	free(tmp2);
 	sxml_save2file(parser,"b.xml");
 	sxml_doc_free(parser);
 	
