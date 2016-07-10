@@ -1117,7 +1117,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 		
 		//innertext
 		pstr = skip(temp); // temp =
-		if(*pstr != '<')//innertext
+		if(*pstr != '<')//innertext,trim²Ù×÷
 		{
 			do
 			{		
@@ -1140,15 +1140,17 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 				}
 				memcpy(node->name, INNER_NAME, INNER_LEN);
 				//snprintf(node->name, INNER_LEN+1, "%s",INNER_NAME);
-				
-				node->data = sxml_alloc(c-value+1);
+				pstr = skip(value);
+				//node->data = sxml_alloc(c-value+1);
+				node->data = sxml_alloc(c-pstr+1);
 				if(!node->data)
 				{
 					sxml_free(node->name);
 					printf("sxml_alloc error\n");
 					break;
 				}
-				memcpy(node->data, value, c-value);
+				//memcpy(node->data, value, c-value);
+				memcpy(node->data, pstr, c-pstr);
 				node->type = 2;
 				node->parent = NULL;
 				node->indent = 0;

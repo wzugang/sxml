@@ -6,12 +6,10 @@
 <![CDATA[hello world]]>
 <![CDATA[hello world]]>
     <raw>
-
 rawdata
     
     </raw>
     <lua>
-
 function fun()
 	int a;
 	a = 10;
@@ -19,8 +17,7 @@ function fun()
 end
     
     </lua>
-
-    ÄÚ²¿×Ö·û´®
+ÄÚ²¿×Ö·û´®
     
 <!--×¢ÊÍ-->
     <empty/>
