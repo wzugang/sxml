@@ -13,7 +13,8 @@ sxml.o:
 sxml.a:sxml.o
 	ar -rcs $@ $^
 sxml.dll:sxml.c
-	gcc -shared -fPIC -static-libgcc $^ -o $@
+	gcc -shared -static-libgcc $^ -o $@
+#	gcc -shared -fPIC -static-libgcc $^ -o $@
 	
 test:test.c sxml.a
 	$(CC) $(CPPFLAGS) $^ -o $@ -g

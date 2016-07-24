@@ -24,12 +24,14 @@ int main()
 	sxml_attr_t* attr = sxml_attr_new("age","25");
 	
 	sxml_node_t* subnode = sxml_node_new("score");
+	sxml_node_t* subnode2 = sxml_node_new("subnode");
 	sxml_node_t* rawdata = sxml_rawdata_new(NULL,"hello world!",strlen("hello world!")); 
 	sxml_node_t* rawdata2 = sxml_rawdata_new(NULL,"hello world!",strlen("hello world!")); 
 	sxml_node_t* rawdata3 = sxml_rawdata_new(NULL,"hello world!",strlen("hello world!")); 
 	sxml_node_t* rawdata4 = sxml_rawdata_new("raw","rawdata",strlen("rawdata")); 
 	sxml_node_t* rawdata5 = sxml_rawdata_new("lua",LUA_SCRIPT,strlen(LUA_SCRIPT)); 
 	sxml_node_t* innertext = sxml_innertext_new("ÄÚ²¿×Ö·û´®");
+	sxml_node_t* innertext2 = sxml_innertext_new("ÄÚ²¿×Ö·û´®");
 	sxml_node_t* comment = sxml_comment_new("×¢ÊÍ");
 	sxml_node_t* empty = sxml_empty_new("empty");
 	
@@ -52,7 +54,9 @@ int main()
 	sxml_add_subnode2node(node,rawdata5);
 	sxml_add_subnode2node(node,innertext);
 	sxml_add_subnode2node(node,comment);
-	sxml_add_subnode2node(node,empty);	
+	sxml_add_subnode2node(node,empty);
+	sxml_add_subnode2node(node,subnode2);
+	sxml_add_subnode2node(subnode2,innertext2);
 	
 	sxml_add_node2doc(doc,node);
 	

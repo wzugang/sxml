@@ -8,7 +8,8 @@
 #include "sxml.h"
 
 //名域处理、特殊节点扩展（#name,对应开始结束节点标志），innertext与rawdata转换，节点查找，多文件引用扩展。后期完善
-//完善入参检查
+//完善入参检查，转义字符处理等（待完成）
+//没有子节点与空节点差异，需要进一步处理。
 
 //item为引用节点
 #define SXML_IS_REFERENCE 		128
@@ -37,6 +38,10 @@
 //返回头结点地址
 #define QUEUE_HEAD(q)                                                         		\
   (QUEUE_NEXT(q))
+  
+//返回尾结点地址
+#define QUEUE_TAIL(q)                                                         		\
+  (QUEUE_PREV(q))
 
 //队列初始化
 #define QUEUE_INIT(q)                                                         		\
@@ -170,6 +175,8 @@ XSTATIC long long check(const char* in, const char* str){ return strstr(in, str)
 XSTATIC const char* copy_until(char* to, const char* from, const char* flag){ const char* pstr; const char* start; long long len=strlen(flag); if(start = strstr(from, flag)){ pstr = from; while(pstr < start)*to = *pstr, pstr++, to++; return start+len;}else{return NULL;}} 
 //跳到下一行位置
 XSTATIC const char* skip_line(const char *in){while (in && *in && *in != '\n')in++; return (in && *in == '\n')?++in:NULL;}
+
+XSTATIC char* trim(char *in){char* start; char* pstr; start = (char*)skip(in); pstr = start; while(pstr && *pstr != '\0')pstr++; if(!pstr)return NULL; while(*pstr <= 32){ *pstr = '\0'; pstr--; } return start; }
 
 
 XSTATIC void*do_alloc(size_t size)
@@ -328,6 +335,11 @@ XEXPORT XAPI sxml_node_t* sxml_node_type_new(long long type, const char* name)
 	node->parent = NULL;
 	node->data = NULL;
 	node->indent = 0;
+	node->index = 0;
+	node->childCount = 0;
+	node->attrCount = 0;
+	node->prevSubling = NULL;
+	node->nextSubling = NULL;
 	QUEUE_INIT(&node->children);
 	QUEUE_INIT(&node->attrs);
 	QUEUE_INIT(&node->nq);
@@ -407,6 +419,10 @@ XSTATIC sxml_attr_t* sxml_attr_item_new()
 	sxml_attr_t* attr = (sxml_attr_t*)sxml_alloc(sizeof(sxml_attr_t));
 	if(!attr)return NULL;
 	QUEUE_INIT(&attr->aq);
+	attr->prevSubling = NULL;
+	attr->nextSubling = NULL;
+	attr->owner = NULL;
+	attr->index = 0;
 	return attr;
 }
 
@@ -524,8 +540,28 @@ XEXPORT XAPI void sxml_doc_free(sxml_doc_t* doc)
 
 XEXPORT XAPI int sxml_add_attr2node(sxml_node_t* node, sxml_attr_t* attr)
 {
+	QUEUE* q;
+	sxml_attr_t* tail;
 	if(!attr)return -1;
-	QUEUE_INSERT_TAIL(&node->attrs,&attr->aq);
+	
+	if(QUEUE_ISEMPTY(&node->attrs))
+	{
+		QUEUE_INSERT_TAIL(&node->attrs,&attr->aq);
+		attr->prevSubling = NULL;
+		attr->nextSubling = NULL;
+		attr->index = 1;
+	}else
+	{
+		q = QUEUE_TAIL(&node->attrs);
+		tail = (sxml_attr_t*)QUEUE_DATA(q,sxml_attr_t,aq);
+		QUEUE_INSERT_TAIL(&node->attrs,&attr->aq);
+		tail->nextSubling = attr;
+		attr->prevSubling = tail;
+		attr->nextSubling = NULL;
+		attr->index = tail->index + 1;
+	}
+	attr->owner = node;
+	node->attrCount++;	
 	return 0;
 }
 
@@ -539,10 +575,30 @@ XEXPORT XAPI int sxml_add_node2doc(sxml_doc_t* doc, sxml_node_t* node)
 
 XEXPORT XAPI int sxml_add_subnode2node(sxml_node_t* node, sxml_node_t* child)
 {
+	QUEUE* q;
+	sxml_node_t* tail;
 	if(!node || !child)return -1;
-	QUEUE_INSERT_TAIL(&node->children,&child->nq);
+	if(QUEUE_ISEMPTY(&node->children))
+	{
+		QUEUE_INSERT_TAIL(&node->children,&child->nq);
+		child->prevSubling = NULL;
+		child->nextSubling = NULL;
+		child->index = 1;
+	}else
+	{
+		q = QUEUE_TAIL(&node->children);
+		tail = (sxml_node_t*)QUEUE_DATA(q,sxml_node_t,nq);
+		QUEUE_INSERT_TAIL(&node->children,&child->nq);
+		tail->nextSubling = child;
+		child->prevSubling = tail;
+		child->nextSubling = NULL;
+		child->index = tail->index + 1;
+	}
+	node->childCount++;
+	
 	child->parent = node;
 	child->indent = node->indent + 1;
+	
 	return 0;
 }
 
@@ -597,59 +653,105 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 	char* tmp;
 	if(p)
 	{
-		if(node->indent)
-		{
-			needed = node->indent*SXML_INDENT_COUNT;
-			str = string_ensure(p, needed+1);
-			for(i = 0; i < needed; i++)
-			{
-				str[i] = ' ';
-			}
-			str[i] = '\0';
-			p->offset = string_update(p); ret = str; 
-		}
 		switch(node->type)
 		{
 			case 0: 
+				if(!node->prevSubling || 2 != node->prevSubling->type)
+				{
+					str = string_ensure(p, 2); str[0] = '\n'; str[1] = '\0'; p->offset = string_update(p);//普通节点，需要换行
+					if(node->indent)
+					{
+						needed = node->indent*SXML_INDENT_COUNT;
+						str = string_ensure(p, needed+1);
+						for(i = 0; i < needed; i++)
+						{
+							str[i] = ' ';
+						}
+						str[i] = '\0';
+						p->offset = string_update(p); ret = str; 
+					}
+				}
+				
 				needed = strlen(node->name)+2;
 				str = string_ensure(p, needed);
 				sprintf(str, "<%s", node->name); p->offset = string_update(p); if(!ret) ret = str; 
 				sxml_attr_print(node, p);
-				needed = 3; str = string_ensure(p, 3); str[0] = '>'; str[1] = '\n'; str[2] = '\0'; p->offset = string_update(p); 
-				QUEUE_FOREACH(q, &node->children)
+				//if has no children
+				if(QUEUE_ISEMPTY(&node->children))
 				{
-					child = (sxml_node_t*)QUEUE_DATA(q,sxml_node_t,nq);
-					sxml_node_print(child, p);
-				}
-				if(node->indent)
+					str = string_ensure(p, 4); str[0] = ' '; str[1] = '/'; str[2] = '>'; str[3] = '\0'; p->offset = string_update(p);
+				}else
 				{
-					needed = node->indent*SXML_INDENT_COUNT;
-					str = string_ensure(p, needed+1);
-					for(i = 0; i < needed; i++)
+					str = string_ensure(p, 2); str[0] = '>'; str[1] = '\0'; p->offset = string_update(p); //换行取决于子节点类型，不应该在这里换行str[2] = '\0';,子节点不为Innertext则换行
+					QUEUE_FOREACH(q, &node->children)
 					{
-						str[i] = ' ';
+						child = (sxml_node_t*)QUEUE_DATA(q,sxml_node_t,nq);
+						sxml_node_print(child, p);
 					}
-					str[i] = '\0';
-					p->offset = string_update(p);
+					if(QUEUE_ISEMPTY(&node->children) || (!QUEUE_ISEMPTY(&node->children) && 2 != child->type))
+					{
+						str = string_ensure(p, 2); str[0] = '\n'; str[1] = '\0'; p->offset = string_update(p); 
+						if(node->indent)
+						{
+							needed = node->indent*SXML_INDENT_COUNT;
+							str = string_ensure(p, needed+1);
+							for(i = 0; i < needed; i++)
+							{
+								str[i] = ' ';
+							}
+							str[i] = '\0';
+							p->offset = string_update(p);
+						}
+					}
+					needed = strlen(node->name)+5; str = string_ensure(p, needed); sprintf(str, "</%s>", node->name); p->offset = string_update(p); 	
 				}
-				needed = strlen(node->name)+5; str = string_ensure(p, needed); sprintf(str, "</%s>\n", node->name); p->offset = string_update(p); 		
 				break;//普通节点，节点头左+节点属性+节点头右+子节点+节点尾
-			case 1: 
-				needed = strlen((char*)node->data)+9; str = string_ensure(p, needed); sprintf(str, "<!--%s-->\n", (char*)node->data); p->offset = string_update(p); if(!ret) ret = str; 
+			case 1:
+				if(!node->prevSubling || 2 != node->prevSubling->type)
+				{
+					str = string_ensure(p, 2); str[0] = '\n'; str[1] = '\0'; p->offset = string_update(p);//注释节点，需要换行
+					if(node->indent)
+					{
+						needed = node->indent*SXML_INDENT_COUNT;
+						str = string_ensure(p, needed+1);
+						for(i = 0; i < needed; i++)
+						{
+							str[i] = ' ';
+						}
+						str[i] = '\0';
+						p->offset = string_update(p); ret = str; 
+					}
+				}
+				needed = strlen((char*)node->data)+8; str = string_ensure(p, needed); sprintf(str, "<!--%s-->", (char*)node->data); p->offset = string_update(p); if(!ret) ret = str; 
 				break;//注释节点，<!--+注释+-->
-			case 2: 
-				needed = strlen((char*)node->data)+2; str = string_ensure(p, needed); sprintf(str, "%s\n", (char*)node->data); p->offset = string_update(p); if(!ret) ret = str; 
+			case 2: //内嵌文本，什么都不需要做
+				needed = strlen((char*)node->data)+1; str = string_ensure(p, needed); sprintf(str, "%s", (char*)node->data); p->offset = string_update(p); if(!ret) ret = str; 
 				break;//内嵌文本，内容
 			case 3: 
+				if(!node->prevSubling || 2 != node->prevSubling->type)
+				{
+					str = string_ensure(p, 2); str[0] = '\n'; str[1] = '\0'; p->offset = string_update(p);//原始数据节点，需要换行
+					if(node->indent)
+					{
+						needed = node->indent*SXML_INDENT_COUNT;
+						str = string_ensure(p, needed+1);
+						for(i = 0; i < needed; i++)
+						{
+							str[i] = ' ';
+						}
+						str[i] = '\0';
+						p->offset = string_update(p); ret = str; 
+					}
+				}
 				data = (sxml_data_t*)node->data;
 				if(!strcmp(node->name,"#rawdata"))
 				{
-					needed = data->size+14; str = string_ensure(p, needed); sprintf(str, "<![CDATA[%s]]>\n", (char*)data->data); p->offset = string_update(p); 
+					needed = data->size+13; str = string_ensure(p, needed); sprintf(str, "<![CDATA[%s]]>", (char*)data->data); p->offset = string_update(p); 
 				}else
 				{
 					if(node->indent)
 					{
-						needed = data->size+4+2*strlen(node->name); str = string_ensure(p, needed); sprintf(str, "<%s>\n", node->name); p->offset = string_update(p); 
+						needed = data->size+3+2*strlen(node->name); str = string_ensure(p, needed); sprintf(str, "<%s>", node->name); p->offset = string_update(p); 
 						
 						//needed = node->indent*SXML_INDENT_COUNT+SXML_INDENT_COUNT; str = string_ensure(p, needed+1);
 						//for(i = 0; i < needed; i++)
@@ -657,24 +759,40 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 						//	str[i] = ' ';
 						//}
 						//str[i] = '\0';p->offset = string_update(p);					
-						needed = data->size+2+2*strlen(node->name); str = string_ensure(p, needed); sprintf(str, "%s\n", (char*)data->data); p->offset = string_update(p); 
+						needed = data->size+1+2*strlen(node->name); str = string_ensure(p, needed); sprintf(str, "%s", (char*)data->data); p->offset = string_update(p); 
 						
-						needed = node->indent*SXML_INDENT_COUNT; str = string_ensure(p, needed+1);
-						for(i = 0; i < needed; i++)
-						{
-							str[i] = ' ';
-						}
-						str[i] = '\0'; p->offset = string_update(p);
-						needed = data->size+9+2*strlen(node->name); str = string_ensure(p, needed); sprintf(str, "</%s>\n", node->name); p->offset = string_update(p); 
+						//needed = node->indent*SXML_INDENT_COUNT; str = string_ensure(p, needed+1);
+						//for(i = 0; i < needed; i++)
+						//{
+						//	str[i] = ' ';
+						//}
+						//str[i] = '\0'; p->offset = string_update(p);
+						
+						needed = data->size+4+2*strlen(node->name); str = string_ensure(p, needed); sprintf(str, "</%s>", node->name); p->offset = string_update(p); 
 					}else
 					{
-						needed = data->size+9+2*strlen(node->name); str = string_ensure(p, needed); sprintf(str, "<%s>\n%s\n</%s>\n", node->name, (char*)data->data, node->name); p->offset = string_update(p); 
+						needed = data->size+6+2*strlen(node->name); str = string_ensure(p, needed); sprintf(str, "<%s>%s</%s>", node->name, (char*)data->data, node->name); p->offset = string_update(p); 
 					}
 				}
 				if(!ret) ret = str; 
 				break;//原始数据，<![CDATA[+原始数据+]]>
 			case 4: 
-				needed = strlen((char*)node->name)+5; str = string_ensure(p, needed); sprintf(str, "<%s/>\n", (char*)node->name); p->offset = string_update(p); if(!ret) ret = str; 
+				if(!node->prevSubling || 2 != node->prevSubling->type)
+				{
+					str = string_ensure(p, 2); str[0] = '\n'; str[1] = '\0'; p->offset = string_update(p);//空节点，需要换行
+					if(node->indent)
+					{
+						needed = node->indent*SXML_INDENT_COUNT;
+						str = string_ensure(p, needed+1);
+						for(i = 0; i < needed; i++)
+						{
+							str[i] = ' ';
+						}
+						str[i] = '\0';
+						p->offset = string_update(p); ret = str; 
+					}
+				}
+				needed = strlen((char*)node->name)+5; str = string_ensure(p, needed); sprintf(str, "<%s/>", (char*)node->name); p->offset = string_update(p); if(!ret) ret = str; 
 				break;//空置节点，节点
 		}
 	}else
@@ -706,7 +824,13 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 				{
 					needed += strlen(entries[i]);
 				}
-				needed += strlen(node->name)*2 + 8;	
+				if(QUEUE_ISEMPTY(&node->children))
+				{
+					needed += strlen(node->name)*2 + 6;	
+				}else
+				{
+					needed += strlen(node->name)*2 + 8;	
+				}
 				indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
 				needed += indent*2; 
 				ret = (char*)sxml_alloc(needed);
@@ -720,38 +844,60 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 					return NULL;
 				}
 				tmp = ret;
-				//前缩进
-				if(node->indent)
+				if(!node->prevSubling || 2 != node->prevSubling->type)
 				{
-					for(i = 0; i < indent; i++)
+					*tmp = '\n'; ++tmp;
+					//前缩进
+					if(node->indent)
 					{
-						*tmp = ' '; ++tmp;
+						for(i = 0; i < indent; i++)
+						{
+							*tmp = ' '; ++tmp;
+						}
 					}
 				}
-				if(!QUEUE_ISEMPTY(&node->attrs))
+				if(QUEUE_ISEMPTY(&node->children))
 				{
-					tmp += sprintf(tmp, "<%s%s>\n", node->name, entries[0]);
-					for(i = 1; i < numentries; i++)
+					if(!QUEUE_ISEMPTY(&node->attrs))
 					{
-						tmp += sprintf(tmp, "%s", entries[i]);
+						tmp += sprintf(tmp, "<%s%s />", node->name, entries[0]);
+					}else
+					{
+						tmp += sprintf(tmp, "<%s />", node->name);
 					}
 				}else
 				{
-					tmp += sprintf(tmp, "<%s>\n", node->name);
-					for(i = 0; i < numentries; i++)
+					if(!QUEUE_ISEMPTY(&node->attrs))
 					{
-						tmp += sprintf(tmp, "%s", entries[i]);
-					}
-				}
-				//后缩进
-				if(node->indent)
-				{
-					for(i = 0; i < indent; i++)
+						tmp += sprintf(tmp, "<%s%s>", node->name, entries[0]);//换行不在这里处理
+						for(i = 1; i < numentries; i++)
+						{
+							tmp += sprintf(tmp, "%s", entries[i]);
+						}
+					}else
 					{
-						*tmp = ' '; ++tmp;
+						tmp += sprintf(tmp, "<%s>", node->name);//换行不在这里处理
+						for(i = 0; i < numentries; i++)
+						{
+							tmp += sprintf(tmp, "%s", entries[i]);
+						}
 					}
+					
+					if(QUEUE_ISEMPTY(&node->children) || (!QUEUE_ISEMPTY(&node->children) && 2 != child->type))
+					{
+						*tmp = '\n'; ++tmp;
+						//后缩进
+						if(node->indent)
+						{
+							for(i = 0; i < indent; i++)
+							{
+								*tmp = ' '; ++tmp;
+							}
+						}
+					}
+					
+					sprintf(tmp, "</%s>", node->name);
 				}
-				sprintf(tmp, "</%s>\n", node->name);
 				//释放没用的内存
 				for(i = 0; i < numentries; i++)
 				{
@@ -760,45 +906,15 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 				sxml_free(entries);
 				break;//普通节点，节点头左+节点属性+节点头右+子节点+节点尾
 			case 1: 
-				needed = strlen((char*)node->data)+9; 
+				needed = strlen((char*)node->data)+10; 
 				indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
 				needed += indent; 
 				ret = (char*)sxml_alloc(needed); 
 				if(!ret) return NULL;
 				tmp = ret;
-				if(node->indent)
+				if(!node->prevSubling || 2 != node->prevSubling->type)
 				{
-					for(i = 0; i < indent; i++)
-					{
-						*tmp = ' '; ++tmp;
-					}
-				}
-				sprintf(tmp, "<!--%s-->\n", (char*)node->data); 
-				break;//注释节点，<!--+注释+-->
-			case 2: 
-				needed = strlen((char*)node->data)+2; 
-				indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
-				needed += indent; 
-				ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
-				tmp = ret;
-				if(node->indent)
-				{
-					for(i = 0; i < indent; i++)
-					{
-						*tmp = ' '; ++tmp;
-					}
-				}
-				sprintf(tmp, "%s\n", (char*)node->data);
-				break;//内嵌文本，内容
-			case 3: 
-				data = (sxml_data_t*)node->data;
-				if(!strcmp(node->name,"#rawdata"))
-				{
-					needed = data->size+14; 
-					indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
-					needed += indent; 
-					ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
-					tmp = ret;
+					*tmp = '\n';++tmp;
 					if(node->indent)
 					{
 						for(i = 0; i < indent; i++)
@@ -806,51 +922,92 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 							*tmp = ' '; ++tmp;
 						}
 					}
-					sprintf(tmp, "<![CDATA[%s]]>\n", (char*)data->data); 
+				}
+				sprintf(tmp, "<!--%s-->", (char*)node->data); 
+				break;//注释节点，<!--+注释+-->
+			case 2: 
+				needed = strlen((char*)node->data)+1;
+				ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
+				tmp = ret;
+				sprintf(tmp, "%s", (char*)node->data);
+				break;//内嵌文本，内容
+			case 3: 
+				data = (sxml_data_t*)node->data;
+				if(!strcmp(node->name,"#rawdata"))
+				{
+					needed = data->size+15; 
+					indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
+					needed += indent; 
+					ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
+					tmp = ret;
+					if(!node->prevSubling || 2 != node->prevSubling->type)
+					{
+						*tmp = '\n';++tmp;
+						if(node->indent)
+						{
+							for(i = 0; i < indent; i++)
+							{
+								*tmp = ' '; ++tmp;
+							}
+						}
+					}
+					sprintf(tmp, "<![CDATA[%s]]>", (char*)data->data); 
 				}else
 				{
-					needed = data->size+9+2*strlen(node->name); 
+					needed = data->size+8+2*strlen(node->name); 
 					indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
 					needed += indent*3+SXML_INDENT_COUNT; 
 					ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
 					tmp = ret;
 					if(node->indent)
 					{
-						for(i = 0; i < indent; i++)
+						if(!node->prevSubling || 2 != node->prevSubling->type)
 						{
-							*tmp = ' '; ++tmp;
+							*tmp = '\n';++tmp;
+							for(i = 0; i < indent; i++)
+							{
+								*tmp = ' '; ++tmp;
+							}
 						}
-						tmp += sprintf(tmp, "<%s>\n", node->name);
+						tmp += sprintf(tmp, "<%s>", node->name);
 						//for(i = 0; i < indent+SXML_INDENT_COUNT; i++)
 						//{
 						//	*tmp = ' '; ++tmp;
 						//}
-						tmp += sprintf(tmp, "%s\n", (char*)data->data);
-						for(i = 0; i < indent; i++)
-						{
-							*tmp = ' '; ++tmp;
-						}
-						tmp += sprintf(tmp, "</%s>\n", node->name);
+						tmp += sprintf(tmp, "%s", (char*)data->data);
+						//for(i = 0; i < indent; i++)
+						//{
+						//	*tmp = ' '; ++tmp;
+						//}
+						tmp += sprintf(tmp, "</%s>", node->name);
 					}else
 					{
-						tmp += sprintf(tmp, "<%s>\n%s\n</%s>\n", node->name, (char*)data->data, node->name);
+						if(!node->prevSubling || 2 != node->prevSubling->type)
+						{
+							*tmp = '\n';++tmp;
+						}
+						tmp += sprintf(tmp, "<%s>%s</%s>", node->name, (char*)data->data, node->name);
 					}
 				}
 				break;//原始数据，<![CDATA[+原始数据+]]>
 			case 4: 
-				needed = strlen((char*)node->name)+5; 
+				needed = strlen((char*)node->name)+6; 
 				indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
 				needed += indent; 
 				ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
 				tmp = ret;
-				if(node->indent)
+				if(!node->prevSubling || 2 != node->prevSubling->type)
 				{
-					for(i = 0; i < indent; i++)
+					*tmp = '\n';++tmp;
+					if(node->indent)
 					{
-						*tmp = ' '; ++tmp;
+						for(i = 0; i < indent; i++)
+						{
+							*tmp = ' '; ++tmp;
+						}
 					}
 				}
-				sprintf(tmp, "<%s/>\n", (char*)node->name); 
+				sprintf(tmp, "<%s/>", (char*)node->name); 
 				break;//空置节点，节点
 		}
 		
@@ -882,9 +1039,9 @@ XEXPORT XAPI char *sxml_doc_print_buffered(sxml_doc_t* doc,int size)
 	if(!p.buffer) return NULL;
 	p.length=size;
 	p.offset=0;
-	needed = 27+16;
+	needed = 26+16;
 	str = string_ensure(&p, needed);
-	sprintf(str, "<?xml version=\"%s\" encoding=\"%s\"?>\n", doc->version, doc->charset);
+	sprintf(str, "<?xml version=\"%s\" encoding=\"%s\"?>", doc->version, doc->charset);
 	p.offset = string_update(&p);
 	
 	QUEUE_FOREACH(q, &doc->dq)
@@ -932,7 +1089,7 @@ XEXPORT XAPI char *sxml_doc_print(sxml_doc_t* doc)
 		return NULL;
 	}
 	tmp = pbuf;
-	tmp += sprintf(tmp, "<?xml version=\"%s\" encoding=\"%s\"?>\n", doc->version, doc->charset);
+	tmp += sprintf(tmp, "<?xml version=\"%s\" encoding=\"%s\"?>", doc->version, doc->charset);
 	
 	for(i = 0; i < numentries; i++)
 	{
@@ -1048,7 +1205,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 	//<+node
 	do
 	{
-		//CDATA处理
+		//CDATA处理,不需要trim
 		if(strlen(temp) > CDATA_BEGIN_LEN)
 		{
 			if(!strncmp(temp,CDATA_BEGIN,CDATA_BEGIN_LEN))
@@ -1086,7 +1243,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 			}
 		}
 		
-		//注释处理
+		//注释处理,不需要trim
 		if(strlen(temp) > COMMENT_BEGIN_LEN)
 		{
 			if(!strncmp(temp, COMMENT_BEGIN, COMMENT_BEGIN_LEN))
@@ -1115,7 +1272,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 			}
 		}
 		
-		//innertext
+		//innertext,不需要trim
 		pstr = skip(temp); // temp =
 		if(*pstr != '<')//innertext,trim操作
 		{
@@ -1206,9 +1363,13 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 				QUEUE_INIT(&subnode->children);
 				QUEUE_INIT(&subnode->attrs);
 				QUEUE_INIT(&subnode->nq);
-				sxml_add_subnode2node(node,subnode);
 				pstr = sxml_node_parse(subnode,temp);
-				if(!pstr)break;
+				if(!pstr)
+				{
+					sxml_node_free(subnode);
+					break;
+				}
+				sxml_add_subnode2node(node,subnode);
 				temp = pskip(pstr);
 			}
 			if(temp != endp)
@@ -1240,9 +1401,13 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 				QUEUE_INIT(&subnode->children);
 				QUEUE_INIT(&subnode->attrs);
 				QUEUE_INIT(&subnode->nq);
-				sxml_add_subnode2node(node,subnode);
 				pstr = sxml_node_parse(subnode,temp);
-				if(!pstr)break;
+				if(!pstr)
+				{
+					sxml_node_free(subnode);
+					break;
+				}
+				sxml_add_subnode2node(node,subnode);
 				temp = pskip(pstr);
 			}
 			if(pstr != endp)
@@ -1373,7 +1538,6 @@ XEXPORT XAPI sxml_doc_t* sxml_parse(const char* filename)
 	}
 	return doc;
 }
-
 
 
 

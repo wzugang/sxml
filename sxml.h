@@ -1,6 +1,10 @@
 #ifndef __SXML_H__
 #define __SXML_H__
 
+
+//查找兄弟节点不方便，孩子节点的个数，属性节点的个数，标记自己的排行（父节点的第几个孩子节点）
+//查找兄弟属性,节点没有孩子打印处理（已完成）
+
 //缩进设置
 #define SXML_INDENT_COUNT		4
 
@@ -22,23 +26,21 @@ typedef void *QUEUE[2];
 //原始数据结构体，要不要类型
 typedef struct __sxml_data_t
 {
-	long long 	size;//数据大小
-	void        *data;//数据指针
+	long long 				size;//数据大小
+	void        			*data;//数据指针
 }sxml_data_t;
-
-typedef struct __sxml_attr_t
-{
-	char*		name;
-	char*		value;
-	long long	type;//字符串、数值、名域;0,1,2
-	QUEUE		aq;
-}sxml_attr_t;
 
 typedef struct __sxml_node_t
 {
 	char*					name;
 	long long				type;//普通节点、注释节点、内嵌文本节点、原始数据节点、空节点;0,1,2,3,4
 	long long 				indent;//缩进
+	long long 				index;//排行
+	long long 				childCount;//孩子个数
+	long long 				attrCount;//属性个数
+	unsigned char 			reserved[8];//保留
+	struct __sxml_node_t*	prevSubling;//上一个兄弟节点
+	struct __sxml_node_t*	nextSubling;//下一个兄弟节点
 	struct __sxml_node_t*	parent;//父节点指针
 	void*					data;//存放数据
 	QUEUE					children;//子节点链表头指针
@@ -46,12 +48,24 @@ typedef struct __sxml_node_t
 	QUEUE					nq;
 }sxml_node_t;
 
+typedef struct __sxml_attr_t
+{
+	struct __sxml_attr_t*	prevSubling;//上一个兄弟属性
+	struct __sxml_attr_t*	nextSubling;//下一个兄弟属性
+	struct __sxml_node_t*	owner;//属性所属节点
+	long long 				index;//排行
+	char*					name;
+	char*					value;
+	long long				type;//字符串、数值、名域;0,1,2
+	QUEUE					aq;
+}sxml_attr_t;
+
 typedef struct __sxml_doc_t
 {
-	char		filename[256];
-	char		version[8];
-	char		charset[8];
-	QUEUE		dq;
+	char					filename[256];
+	char					version[8];
+	char					charset[8];
+	QUEUE					dq;
 }sxml_doc_t;
 
 
