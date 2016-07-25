@@ -5,8 +5,11 @@
 
 
 #define LUA_SCRIPT "function fun()\n\
-	int a;\n\
+	int a,b,c;\n\
 	a = 10;\n\
+	b = 5;\n\
+	if a < 10 && b >5 then\n\
+	c = 100;\n\
 	return a;\n\
 end"
 

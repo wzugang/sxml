@@ -9,7 +9,7 @@
 
 //名域处理、特殊节点扩展（#name,对应开始结束节点标志），innertext与rawdata转换，节点查找，多文件引用扩展。后期完善
 //完善入参检查，转义字符处理等（待完成）
-//没有子节点与空节点差异，需要进一步处理。
+//没有子节点与空节点差异，需要进一步处理。用户自定义与原始数据的区别。
 
 //item为引用节点
 #define SXML_IS_REFERENCE 		128
@@ -143,6 +143,8 @@ static const long long COMMENT_LEN         =8;
 
 static const char* INNER_NAME              ="#innertext";
 static const long long INNER_LEN           =10;
+
+//static char* g_sxml_rawdata_tab[]={"#cdata",}
 
 
 static char sxml_hex_table[128]=
@@ -1315,7 +1317,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 			}
 		}
 		//普通节点
-		c = string_index_of_any(value," >/");
+		c = string_index_of_any(value," \t>/");
 		if(!c)break;
 		node->name = sxml_alloc(c-value);
 		if(!node->name)
@@ -1326,10 +1328,25 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 		memcpy(node->name, value+1, c-value-1);
 		//snprintf(node->name, c-value, "%s",value+1);
 		pstr = temp = c;
-		if(*c == ' ')//带属性节点
+		if(*c == ' ' || *c == '\n')//带属性节点
 		{
 			while(*c == ' ')
 			{
+				//分情况处理
+				pstr = c;
+				while(*pstr == ' ' || *pstr == '\t')pstr++;
+				if('/' == *pstr)
+				{
+					if(*(pstr+1) == '>')
+					{
+						node->type = 0;
+						return pskip(pstr+2);
+					}else
+					{
+						sxml_error_log(temp);
+						return NULL;
+					}
+				}
 				attr = sxml_attr_item_new();
 				QUEUE_INIT(&attr->aq);
 				c = sxml_attr_parse(attr,temp);
@@ -1382,6 +1399,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value)
 			}
 			node->type = 0;
 			return endp+strlen(endbuf);
+			
 			
 		}else if(*c == '>')//不带属性节点,节点头，找到节点尾，遍历中间解析
 		{

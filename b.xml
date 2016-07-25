@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="GB2312"?>
 <root age="25" sex="man">
-    <score 语文="95" 数学="100" 英语="98">
-    </score>
+    <score 语文="95" 数学="100" 英语="98" />
     <![CDATA[hello world]]>
     <![CDATA[hello world]]>
     <![CDATA[hello world]]>
