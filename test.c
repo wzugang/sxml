@@ -13,8 +13,6 @@
 	return a;\n\
 end"
 
-sxml_parser_t parser_test={{"lua","raw"},{0},{0}};
-
 int main()
 {
 	sxml_file_info_t* info;
@@ -72,26 +70,15 @@ int main()
 	pstr = tmp;
 	printf("%s\n", tmp);
 	printf("%s\n", tmp2);
-	//while((pstr = skip_line(pstr)))line++;
-	//printf("\n\n%d\n\n", line);
-	//printf("\n\n%s\n\n",check_skip("<?xml version=\"1.0\" encoding=\"GB2312\"?>","<?xml version=\\\"")?"YES":"NO");
-	//copy_until(buff,"<?xml version=\"1.0\" encoding=\"GB2312\"?>","\" ");
-	//printf("\n\n%s\n\n",buff);
 	
 	sxml_save(doc);
-
 	
 	sxml_doc_free(doc);
 	doc = NULL;
 	free(tmp);
 	free(tmp2);
 	
-	//printf("aaaa...................\n");
-	
-	//getchar();
-	
 	parser = sxml_parse("a.xml",parser_t);
-	
 	
 	tmp = sxml_doc_print_buffered(parser,16);
 	tmp2 = sxml_doc_print(parser);
