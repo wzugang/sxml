@@ -13,6 +13,7 @@
 	return a;\n\
 end"
 
+sxml_parser_t parser_test={{"lua","raw"},{0},{0}};
 
 int main()
 {
@@ -37,6 +38,9 @@ int main()
 	sxml_node_t* innertext2 = sxml_innertext_new("ÄÚ²¿×Ö·û´®");
 	sxml_node_t* comment = sxml_comment_new("×¢ÊÍ");
 	sxml_node_t* empty = sxml_empty_new("empty");
+	sxml_parser_t* parser_t = sxml_parser_new();
+	sxml_alias_t* alias = sxml_alias_new(3,"lua");
+	sxml_add_alias2parser(parser_t, alias);
 	
 	sxml_add_attr2node(node,attr);
 	attr = sxml_attr_new("sex","man");
@@ -86,7 +90,7 @@ int main()
 	
 	//getchar();
 	
-	parser = sxml_parse("a.xml");
+	parser = sxml_parse("a.xml",parser_t);
 	
 	
 	tmp = sxml_doc_print_buffered(parser,16);

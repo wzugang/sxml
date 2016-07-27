@@ -4,6 +4,8 @@
 
 //查找兄弟节点不方便，孩子节点的个数，属性节点的个数，标记自己的排行（父节点的第几个孩子节点）
 //查找兄弟属性,节点没有孩子打印处理（已完成）
+//原始数据没有属性
+
 
 //缩进设置
 #define SXML_INDENT_COUNT		4
@@ -22,6 +24,32 @@ typedef void *QUEUE[2];
 #else
 #define		XEXPORT extern 
 #endif
+
+typedef enum __sxml_type_t
+{
+	SXML_NORMAL,
+	SXML_COMMENT,
+	SXML_INNERTEXT,
+	SXML_RAWDATA,
+	SXML_EMPTY
+}sxml_type_t;
+
+//节点别名
+typedef struct __sxml_alias_t
+{
+	QUEUE aq;
+	long long type;
+	char* alias;
+}sxml_alias_t;
+
+typedef struct __sxml_parser_t
+{
+	QUEUE normal;
+	QUEUE comment;//暂时不用
+	QUEUE innertext;//暂时不用
+	QUEUE rawdata;
+	QUEUE empty;
+}sxml_parser_t;
 
 //原始数据结构体，要不要类型
 typedef struct __sxml_data_t
@@ -103,10 +131,13 @@ XEXPORT XAPI sxml_node_t* sxml_innertext_new(const char* innertext);
 XEXPORT XAPI sxml_node_t* sxml_comment_new(const char* comment);
 XEXPORT XAPI sxml_node_t* sxml_empty_new(const char* name);
 XEXPORT XAPI sxml_attr_t* sxml_attr_new(const char* name, const char* value);
+XEXPORT XAPI sxml_parser_t* sxml_parser_new();
+XEXPORT XAPI sxml_alias_t* sxml_alias_new(long long int type, char* value);
 
 XEXPORT XAPI int sxml_add_attr2node(sxml_node_t* node, sxml_attr_t* attr);
 XEXPORT XAPI int sxml_add_node2doc(sxml_doc_t* doc, sxml_node_t* node);
 XEXPORT XAPI int sxml_add_subnode2node(sxml_node_t* node, sxml_node_t* child);
+XEXPORT XAPI long long int sxml_add_alias2parser(sxml_parser_t* parser, sxml_alias_t* alias);
 
 XEXPORT XAPI char *sxml_node_print_buffered(sxml_node_t* node,int size);
 XEXPORT XAPI char *sxml_doc_print_buffered(sxml_doc_t* doc,int size);
@@ -123,8 +154,8 @@ XEXPORT XAPI sxml_file_info_t* sxml_get_file_info(const char* value);
 XEXPORT XAPI void sxml_print_file_info(sxml_file_info_t* info);
 XEXPORT XAPI void sxml_free_file_info(sxml_file_info_t** info);
 
-XEXPORT XAPI sxml_doc_t* sxml_doc_parse(const char* filename, const char* value);
-XEXPORT XAPI sxml_doc_t* sxml_parse(const char* filename);
+XEXPORT XAPI sxml_doc_t* sxml_doc_parse(const char* filename, const char* value, sxml_parser_t* parser);
+XEXPORT XAPI sxml_doc_t* sxml_parse(const char* filename, sxml_parser_t* parser);
 
 
 #endif

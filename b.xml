@@ -6,8 +6,11 @@
     <![CDATA[hello world]]>
     <raw>rawdata</raw>
     <lua>function fun()
-	int a;
+	int a,b,c;
 	a = 10;
+	b = 5;
+	if a < 10 && b >5 then
+	c = 100;
 	return a;
 end</lua>ÄÚ²¿×Ö·û´®<!--×¢ÊÍ-->
     <empty/>
