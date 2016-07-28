@@ -67,8 +67,8 @@ typedef struct __sxml_node_t
 	long long 				childCount;//孩子个数
 	long long 				attrCount;//属性个数
 	unsigned char 			reserved[8];//保留
-	struct __sxml_node_t*	prevSubling;//上一个兄弟节点
-	struct __sxml_node_t*	nextSubling;//下一个兄弟节点
+	struct __sxml_node_t*	prevSibling;//上一个兄弟节点
+	struct __sxml_node_t*	nextSibling;//下一个兄弟节点
 	struct __sxml_node_t*	parent;//父节点指针
 	void*					data;//存放数据
 	QUEUE					children;//子节点链表头指针
@@ -78,8 +78,8 @@ typedef struct __sxml_node_t
 
 typedef struct __sxml_attr_t
 {
-	struct __sxml_attr_t*	prevSubling;//上一个兄弟属性
-	struct __sxml_attr_t*	nextSubling;//下一个兄弟属性
+	struct __sxml_attr_t*	prevSibling;//上一个兄弟属性
+	struct __sxml_attr_t*	nextSibling;//下一个兄弟属性
 	struct __sxml_node_t*	owner;//属性所属节点
 	long long 				index;//排行
 	char*					name;
@@ -121,42 +121,53 @@ typedef struct __sxml_file_info_t
 {
 	sxml_file_line_t* line_info;
 	long long line_count;
-	//const char* filename;
 }sxml_file_info_t;
 
-XEXPORT XAPI sxml_doc_t* sxml_doc_new(const char* filename, const char* version, const char* charset);
-XEXPORT XAPI sxml_node_t* sxml_node_new(const char* name);
-XEXPORT XAPI sxml_node_t* sxml_rawdata_new(const char* name, const void* data, long long size);
-XEXPORT XAPI sxml_node_t* sxml_innertext_new(const char* innertext);
-XEXPORT XAPI sxml_node_t* sxml_comment_new(const char* comment);
-XEXPORT XAPI sxml_node_t* sxml_empty_new(const char* name);
-XEXPORT XAPI sxml_attr_t* sxml_attr_new(const char* name, const char* value);
-XEXPORT XAPI sxml_parser_t* sxml_parser_new();
-XEXPORT XAPI sxml_alias_t* sxml_alias_new(long long int type, char* value);
-
-XEXPORT XAPI int sxml_add_attr2node(sxml_node_t* node, sxml_attr_t* attr);
-XEXPORT XAPI int sxml_add_node2doc(sxml_doc_t* doc, sxml_node_t* node);
-XEXPORT XAPI int sxml_add_subnode2node(sxml_node_t* node, sxml_node_t* child);
-XEXPORT XAPI long long int sxml_add_alias2parser(sxml_parser_t* parser, sxml_alias_t* alias);
-
-XEXPORT XAPI char *sxml_node_print_buffered(sxml_node_t* node,int size);
-XEXPORT XAPI char *sxml_doc_print_buffered(sxml_doc_t* doc,int size);
-XEXPORT XAPI char *sxml_doc_print(sxml_doc_t* doc);
-
-XEXPORT XAPI void sxml_attr_free(sxml_attr_t* attr);
-XEXPORT XAPI void sxml_node_free(sxml_node_t* node);
-XEXPORT XAPI void sxml_doc_free(sxml_doc_t* doc);
-
-XEXPORT XAPI int sxml_save2file(sxml_doc_t* doc, const char* filename);
-XEXPORT XAPI int sxml_save(sxml_doc_t* doc);
-
-XEXPORT XAPI sxml_file_info_t* sxml_get_file_info(const char* value);
-XEXPORT XAPI void sxml_print_file_info(sxml_file_info_t* info);
-XEXPORT XAPI void sxml_free_file_info(sxml_file_info_t** info);
-
-XEXPORT XAPI sxml_doc_t* sxml_doc_parse(const char* filename, const char* value, sxml_parser_t* parser);
-XEXPORT XAPI sxml_doc_t* sxml_parse(const char* filename, sxml_parser_t* parser);
-
+XEXPORT XAPI 	sxml_doc_t* 		sxml_doc_new(const char* filename, const char* version, const char* charset);
+XEXPORT XAPI 	sxml_node_t* 		sxml_node_new(const char* name);
+XEXPORT XAPI 	sxml_node_t* 		sxml_rawdata_new(const char* name, const void* data, long long size);
+XEXPORT XAPI 	sxml_node_t*		sxml_innertext_new(const char* innertext);
+XEXPORT XAPI 	sxml_node_t* 		sxml_comment_new(const char* comment);
+XEXPORT XAPI 	sxml_node_t* 		sxml_empty_new(const char* name);
+XEXPORT XAPI 	sxml_attr_t* 		sxml_attr_new(const char* name, const char* value);
+XEXPORT XAPI 	sxml_parser_t* 		sxml_parser_new();
+XEXPORT XAPI 	sxml_alias_t* 		sxml_alias_new(long long int type, char* value);
+	
+XEXPORT XAPI 	int 				sxml_add_attr2node(sxml_node_t* node, sxml_attr_t* attr);
+XEXPORT XAPI 	int 				sxml_add_node2doc(sxml_doc_t* doc, sxml_node_t* node);
+XEXPORT XAPI 	int 				sxml_add_subnode2node(sxml_node_t* node, sxml_node_t* child);
+XEXPORT XAPI 	long long int 		sxml_add_alias2parser(sxml_parser_t* parser, sxml_alias_t* alias);
+	
+XEXPORT XAPI 	int 				sxml_del_node4attr(sxml_node_t* node, char* name);
+XEXPORT XAPI 	int 				sxml_del_doc4node(sxml_doc_t* doc, char* name);
+XEXPORT XAPI 	int 				sxml_del_node4subnode(sxml_node_t* node, char* name);
+XEXPORT XAPI 	long long int 		sxml_del_parser4alias(sxml_parser_t* parser, char* name);
+	
+XEXPORT XAPI 	char*				sxml_node_print_buffered(sxml_node_t* node,int size);
+XEXPORT XAPI 	char*				sxml_doc_print_buffered(sxml_doc_t* doc,int size);
+XEXPORT XAPI 	char*				sxml_doc_print(sxml_doc_t* doc);
+	
+XEXPORT XAPI 	void 				sxml_attr_free(sxml_attr_t* attr);
+XEXPORT XAPI 	void 				sxml_node_free(sxml_node_t* node);
+XEXPORT XAPI 	void 				sxml_doc_free(sxml_doc_t* doc);
+	
+XEXPORT XAPI 	int 				sxml_save2file(sxml_doc_t* doc, const char* filename);
+XEXPORT XAPI 	int 				sxml_save(sxml_doc_t* doc);
+	
+XEXPORT XAPI 	sxml_file_info_t* 	sxml_get_file_info(const char* value);
+XEXPORT XAPI 	void 				sxml_print_file_info(sxml_file_info_t* info);
+XEXPORT XAPI 	void 				sxml_free_file_info(sxml_file_info_t** info);
+	
+XEXPORT XAPI 	sxml_doc_t* 		sxml_doc_parse(const char* filename, const char* value, sxml_parser_t* parser);
+XEXPORT XAPI 	sxml_doc_t* 		sxml_parse(const char* filename, sxml_parser_t* parser);
+	
+XEXPORT XAPI 	sxml_node_t* 		sxml_node_nextSibling(sxml_node_t* node);
+XEXPORT XAPI 	sxml_node_t* 		sxml_node_prevSibling(sxml_node_t* node);
+XEXPORT XAPI 	sxml_attr_t* 		sxml_attr_nextSibling(sxml_attr_t* attr);
+XEXPORT XAPI 	sxml_attr_t* 		sxml_attr_prevSibling(sxml_attr_t* attr);
+			
+XEXPORT XAPI 	sxml_node_t* 		sxml_node_getChildByName(sxml_node_t* node, char* name);
+XEXPORT XAPI 	sxml_attr_t* 		sxml_node_getAttrByName(sxml_node_t* node, char* name);
 
 #endif
 
