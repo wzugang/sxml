@@ -31,24 +31,22 @@ typedef enum __sxml_type_t
 	SXML_COMMENT,
 	SXML_INNERTEXT,
 	SXML_RAWDATA,
-	SXML_EMPTY
+	SXML_USERDEF
 }sxml_type_t;
 
 //节点别名
 typedef struct __sxml_alias_t
 {
 	QUEUE aq;
-	long long type;
+	long long type;//0,对称节点,1不对称节点
 	char* alias;
+	char* append;
 }sxml_alias_t;
 
 typedef struct __sxml_parser_t
 {
-	QUEUE normal;
-	QUEUE comment;//暂时不用
-	QUEUE innertext;//暂时不用
-	QUEUE rawdata;
-	QUEUE empty;
+	QUEUE rawdata;//对称节点
+	QUEUE userdef;//不对称节点
 }sxml_parser_t;
 
 //原始数据结构体，要不要类型
@@ -61,6 +59,7 @@ typedef struct __sxml_data_t
 typedef struct __sxml_node_t
 {
 	char*					name;
+	char*					append;//用于用户自定义节点
 	long long				type;//普通节点、注释节点、内嵌文本节点、原始数据节点、空节点;0,1,2,3,4
 	long long 				indent;//缩进
 	long long 				index;//排行
@@ -128,10 +127,9 @@ XEXPORT XAPI 	sxml_node_t* 		sxml_node_new(const char* name);
 XEXPORT XAPI 	sxml_node_t* 		sxml_rawdata_new(const char* name, const void* data, long long size);
 XEXPORT XAPI 	sxml_node_t*		sxml_innertext_new(const char* innertext);
 XEXPORT XAPI 	sxml_node_t* 		sxml_comment_new(const char* comment);
-XEXPORT XAPI 	sxml_node_t* 		sxml_empty_new(const char* name);
 XEXPORT XAPI 	sxml_attr_t* 		sxml_attr_new(const char* name, const char* value);
 XEXPORT XAPI 	sxml_parser_t* 		sxml_parser_new();
-XEXPORT XAPI 	sxml_alias_t* 		sxml_alias_new(long long int type, char* value);
+XEXPORT XAPI 	sxml_alias_t* 		sxml_alias_new(char* name, char* append);
 	
 XEXPORT XAPI 	int 				sxml_add_attr2node(sxml_node_t* node, sxml_attr_t* attr);
 XEXPORT XAPI 	int 				sxml_add_node2doc(sxml_doc_t* doc, sxml_node_t* node);

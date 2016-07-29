@@ -325,7 +325,7 @@ XSTATIC sxml_node_t* sxml_node_item_new()
 	return node;
 }
 
-XEXPORT XAPI sxml_node_t* sxml_node_type_new(long long type, const char* name)
+XEXPORT XAPI sxml_node_t* sxml_node_type_new(long long type, const char* name, const char* append)
 {
 	if(!name)return NULL;
 	sxml_node_t* node = sxml_node_item_new();
@@ -333,6 +333,17 @@ XEXPORT XAPI sxml_node_t* sxml_node_type_new(long long type, const char* name)
 	node->name = (char*)sxml_alloc(strlen(name)+1);
 	if(!node->name){ sxml_free(node); return NULL; }
 	node->type = type;
+	if(SXML_USERDEF == node->type)
+	{
+		if(!append){ sxml_free(node); sxml_free(node->name); return NULL; }
+		node->append = (char*)sxml_alloc(strlen(append)+1);
+		if(!node->append){ sxml_free(node); sxml_free(node->name); return NULL; }
+		sprintf(node->append,"%s",append);
+		
+	}else
+	{
+		node->append = NULL;
+	}
 	sprintf(node->name,"%s",name);
 	//printf("node->name malloc: %p, %s\n", node->name, node->name);
 	node->parent = NULL;
@@ -351,18 +362,13 @@ XEXPORT XAPI sxml_node_t* sxml_node_type_new(long long type, const char* name)
 
 XEXPORT XAPI sxml_node_t* sxml_node_new(const char* name)
 {
-	return sxml_node_type_new(0,name);
-}
-
-XEXPORT XAPI sxml_node_t* sxml_empty_new(const char* name)
-{
-	return sxml_node_type_new(4,name);
+	return sxml_node_type_new(SXML_NORMAL,name,NULL);
 }
 
 XEXPORT XAPI sxml_node_t* sxml_comment_new(const char* comment)
 {
 	long long len = strlen(comment);
-	sxml_node_t* node = sxml_node_type_new(1,"#comment");
+	sxml_node_t* node = sxml_node_type_new(SXML_COMMENT,"#comment",NULL);
 	node->data = (char*)sxml_alloc(len+1);
 	if(!node->data)
 	{
@@ -376,7 +382,7 @@ XEXPORT XAPI sxml_node_t* sxml_comment_new(const char* comment)
 XEXPORT XAPI sxml_node_t* sxml_innertext_new(const char* innertext)
 {
 	long long len = strlen(innertext);
-	sxml_node_t* node = sxml_node_type_new(2,"#innertext");
+	sxml_node_t* node = sxml_node_type_new(SXML_INNERTEXT,"#innertext",NULL);
 	node->data = (char*)sxml_alloc(len+1);
 	if(!node->data)
 	{
@@ -408,10 +414,40 @@ XEXPORT XAPI sxml_node_t* sxml_rawdata_new(const char* name, const void* data, l
 	
 	if(!name)
 	{
-		node = sxml_node_type_new(3,"#rawdata");
+		node = sxml_node_type_new(SXML_RAWDATA,"#rawdata",NULL);
 	}else
 	{
-		node = sxml_node_type_new(3,name);
+		node = sxml_node_type_new(SXML_RAWDATA,name,NULL);
+	}
+	if(!node)
+	{
+		sxml_free(datap);return NULL;
+	}
+	node->data = datap;
+	return node;
+}
+
+XEXPORT XAPI sxml_node_t* sxml_userdef_new(const char* start, const char* end, const void* data, long long size)
+{
+	sxml_node_t* node; 
+	if(!start || !end || NULL == data || !size)
+	{
+		return NULL;
+	}
+	sxml_data_t* datap = (sxml_data_t*)sxml_alloc(sizeof(sxml_data_t));
+	if(!datap)return NULL;
+	datap->size = size;
+	datap->data = sxml_alloc(size+1);
+	if(!datap->data)
+	{
+		sxml_free(datap);
+		return NULL;
+	}
+	memcpy(datap->data, data, size);	
+	node = sxml_node_type_new(SXML_USERDEF, start, end);
+	if(!node)
+	{
+		sxml_free(datap);return NULL;
 	}
 	node->data = datap;
 	return node;
@@ -452,21 +488,40 @@ XEXPORT XAPI sxml_alias_t* sxml_alias_item_new()
 	if(!alias)return NULL;
 	QUEUE_INIT(&alias->aq);
 	alias->alias = NULL;
+	alias->append = NULL;
 	return alias;
 }
 
-XEXPORT XAPI sxml_alias_t* sxml_alias_new(long long int type, char* value)
+XEXPORT XAPI sxml_alias_t* sxml_alias_new(char* name, char* append)
 {
-	long long len = strlen(value);
-	sxml_alias_t* alias = sxml_alias_item_new();
+	long long len;
+	sxml_alias_t* alias;
+	if(!name)return NULL;
+	len = strlen(name);
+	alias = sxml_alias_item_new();
 	alias->alias = (char*)sxml_alloc(len+1);
 	if(!alias->alias)
 	{
 		sxml_free(alias);
 		return NULL;
 	}
-	memcpy(alias->alias, value, len);
-	alias->type = type;
+	memcpy(alias->alias, name, len);
+	if(append)
+	{
+		len = strlen(append);
+		alias->append = (char*)sxml_alloc(len+1);
+		if(!alias->append)
+		{
+			sxml_free(alias->alias);
+			sxml_free(alias);
+			return NULL;
+		}
+		memcpy(alias->alias, name, len);
+		alias->type = 1;
+	}else
+	{
+		alias->type = 0;
+	}
 	return alias;
 }
 
@@ -482,8 +537,7 @@ XEXPORT XAPI sxml_parser_t* sxml_parser_new()
 	sxml_parser_t* parser = (sxml_parser_t*)sxml_alloc(sizeof(sxml_parser_t));
 	if(!parser)return NULL;
 	QUEUE_INIT(&parser->rawdata);
-	QUEUE_INIT(&parser->innertext);
-	QUEUE_INIT(&parser->comment);
+	QUEUE_INIT(&parser->userdef);
 	return parser;
 }
 
@@ -500,11 +554,8 @@ XEXPORT XAPI long long int sxml_add_alias2parser(sxml_parser_t* parser, sxml_ali
 	if(!alias)return -1;
 	switch(alias->type)
 	{
-		case 0:QUEUE_INSERT_TAIL(&parser->normal, &alias->aq);break;
-		case 1:QUEUE_INSERT_TAIL(&parser->comment, &alias->aq);break;
-		case 2:QUEUE_INSERT_TAIL(&parser->innertext, &alias->aq);break;
-		case 3:QUEUE_INSERT_TAIL(&parser->rawdata, &alias->aq);break;
-		case 4:QUEUE_INSERT_TAIL(&parser->empty, &alias->aq);break;
+		case 0:QUEUE_INSERT_TAIL(&parser->rawdata, &alias->aq);break;
+		case 1:QUEUE_INSERT_TAIL(&parser->userdef, &alias->aq);break;
 		default:QUEUE_INSERT_TAIL(&parser->rawdata, &alias->aq);break;
 	}
 }
@@ -550,7 +601,6 @@ XSTATIC void sxml_node_attrs_free(sxml_node_t* node)
 	}
 }
 
-
 XEXPORT XAPI void sxml_node_free(sxml_node_t* node)
 {
 	QUEUE* q;
@@ -576,6 +626,10 @@ XEXPORT XAPI void sxml_node_free(sxml_node_t* node)
 	{
 		//printf("node->name free: %p, %s\n",node->name, node->name);
 		sxml_free(node->name);
+	}
+	if(node->append)
+	{
+		sxml_free(node->append);
 	}
 	if(node->data)
 	{
@@ -969,10 +1023,10 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 				}
 				if(!ret) ret = str; 
 				break;//原始数据，<![CDATA[+原始数据+]]>
-			case 4: 
+			case 4://用户自定义节点没有子节点
 				if(!node->prevSibling || 2 != node->prevSibling->type)
 				{
-					str = string_ensure(p, 2); str[0] = '\n'; str[1] = '\0'; p->offset = string_update(p);//空节点，需要换行
+					str = string_ensure(p, 2); str[0] = '\n'; str[1] = '\0'; p->offset = string_update(p);//普通节点，需要换行
 					if(node->indent)
 					{
 						needed = node->indent*SXML_INDENT_COUNT;
@@ -985,8 +1039,28 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 						p->offset = string_update(p); ret = str; 
 					}
 				}
-				needed = strlen((char*)node->name)+5; str = string_ensure(p, needed); sprintf(str, "<%s/>", (char*)node->name); p->offset = string_update(p); if(!ret) ret = str; 
-				break;//空置节点，节点
+				data = (sxml_data_t*)node->data;
+				needed = data->size+strlen(node->name)+strlen(node->append)+1; str = string_ensure(p, needed); sprintf(str, "%s%s%s", node->name, (char*)data->data, node->append); p->offset = string_update(p); 
+				if(!ret) ret = str; 
+				break;//用户自定义节点	
+			//case 4: 
+			//	if(!node->prevSibling || 2 != node->prevSibling->type)
+			//	{
+			//		str = string_ensure(p, 2); str[0] = '\n'; str[1] = '\0'; p->offset = string_update(p);//空节点，需要换行
+			//		if(node->indent)
+			//		{
+			//			needed = node->indent*SXML_INDENT_COUNT;
+			//			str = string_ensure(p, needed+1);
+			//			for(i = 0; i < needed; i++)
+			//			{
+			//				str[i] = ' ';
+			//			}
+			//			str[i] = '\0';
+			//			p->offset = string_update(p); ret = str; 
+			//		}
+			//	}
+			//	needed = strlen((char*)node->name)+6; str = string_ensure(p, needed); sprintf(str, "<%s />", (char*)node->name); p->offset = string_update(p); if(!ret) ret = str; 
+			//	break;//空置节点，节点
 		}
 	}else
 	{
@@ -1183,8 +1257,10 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 					}
 				}
 				break;//原始数据，<![CDATA[+原始数据+]]>
-			case 4: 
-				needed = strlen((char*)node->name)+6; 
+				
+			case 4:
+				data = (sxml_data_t*)node->data;
+				needed = data->size+strlen(node->name)+strlen(node->append)+1; 
 				indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
 				needed += indent; 
 				ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
@@ -1200,8 +1276,37 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 						}
 					}
 				}
-				sprintf(tmp, "<%s/>", (char*)node->name); 
-				break;//空置节点，节点
+				sprintf(tmp, "%s%s%s", node->name, (char*)data->data, node->append);
+				break;//原始数据，<![CDATA[+原始数据+]]>
+			//case 4: 
+			//	
+			//	if(!node->prevSibling || 2 != node->prevSibling->type)
+			//	{
+			//		needed = strlen((char*)node->name)+6; 
+			//		indent = (node->indent)?node->indent*SXML_INDENT_COUNT:0; 
+			//		needed += indent; 
+			//		ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
+			//		tmp = ret;
+			//		
+			//		*tmp = '\n';++tmp;
+			//		if(node->indent)
+			//		{
+			//			for(i = 0; i < indent; i++)
+			//			{
+			//				*tmp = ' '; ++tmp;
+			//			}
+			//		}
+			//		
+			//		sprintf(tmp, "<%s />", (char*)node->name); 
+			//	}else
+			//	{
+			//		needed = strlen((char*)node->name)+5; 
+			//		ret = (char*)sxml_alloc(needed); if(!ret) return NULL; 
+			//		tmp = ret;
+			//		
+			//		sprintf(tmp, "<%s />", (char*)node->name); 
+			//	}
+			//	break;//空置节点，节点
 		}
 		
 	}
@@ -1466,6 +1571,53 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value, s
 				return endp+COMMENT_END_LEN;
 			}
 		}
+		//用户自定义数据处理
+		QUEUE_FOREACH(q, &parser->userdef)
+		{
+			alias = (sxml_alias_t*)QUEUE_DATA(q,sxml_alias_t,aq);
+			if(strlen(temp) > strlen(alias->alias))
+			{
+				if(!strncmp(alias->alias, alias->alias, strlen(alias->alias)))
+				{
+					node->type = SXML_USERDEF;break;
+				}
+			}
+		}
+		if(SXML_USERDEF == node->type)
+		{
+			temp = temp + strlen(alias->alias);
+			endp = strstr(temp,alias->append);
+			if(!endp)break;			
+			node->name = (char*)sxml_alloc(strlen(alias->alias)+1);
+			if(!node->name)break;
+			node->append = (char*)sxml_alloc(strlen(alias->append)+1);
+			if(!node->append){ sxml_free(node->name); break; }
+			sprintf(node->name,"%s",alias->alias);
+			sprintf(node->append,"%s",alias->append);
+			node->parent = NULL;
+			node->indent = 0;
+			datap = (sxml_data_t*)sxml_alloc(sizeof(sxml_data_t));
+			if(!datap)
+			{
+				sxml_free(node->name);
+				sxml_free(node->append);
+				printf("sxml_alloc error\n");
+				break;
+			}
+			datap->size = endp - temp;
+			datap->data = sxml_alloc(datap->size+1);
+			if(!datap->data)
+			{
+				sxml_free(node->name);
+				sxml_free(node->append);
+				sxml_free(datap);
+				printf("sxml_alloc error\n");
+				return NULL;
+			}
+			memcpy(datap->data, temp, datap->size);	
+			node->data = datap;
+			return endp+strlen(alias->append);
+		}
 		
 		//innertext,不需要trim
 		pstr = skip(temp); // temp =
@@ -1510,7 +1662,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value, s
 			}
 		}
 		//普通节点
-		c = string_index_of_any(value," \t>/");
+		c = string_index_of_any(value," \t\n>/");
 		if(!c)break;
 		node->name = sxml_alloc(c-value);
 		if(!node->name)
@@ -1526,10 +1678,10 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value, s
 			alias = (sxml_alias_t*)QUEUE_DATA(q,sxml_alias_t,aq);
 			if(!strcmp(alias->alias, node->name))
 			{
-				node->type = alias->type;
+				node->type = SXML_RAWDATA;break;
 			}
 		}
-		if(SXML_RAWDATA == node->type && *c == '>')
+		if(SXML_RAWDATA == node->type && *c == '>')//自定义原始数据节点,暂定为不能有属性,实际上是可以有的,以后再添加,例如javascript等。
 		{
 			sprintf(endbuf,"</%s>",node->name);//尾节点名称构造
 			endp = strstr(c+1,endbuf);
@@ -1557,16 +1709,17 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value, s
 		}
 		//snprintf(node->name, c-value, "%s",value+1);
 		pstr = temp = c;
-		if(*c == ' ' || *c == '\n')//带属性节点
+		if(*skip(c) != '>' && (*c == ' ' || *c == '\t' || *c == '\n'))//带属性节点,尾节点采用严格语法,节点中不能有空白字符,头节点采用宽松语法。
+		//if(*c == ' ' || *c == '\t' || *c == '\n')//带属性节点,尾节点采用严格语法,节点中不能有空白字符,头节点采用宽松语法。
 		{
-			while(*c == ' ')
+			while(*c == ' ' || *c == '\t' || *c == '\n')
 			{
 				//分情况处理
 				pstr = c;
-				while(*pstr == ' ' || *pstr == '\t')pstr++;
+				while(*pstr == ' ' || *pstr == '\t' || *c == '\n')pstr++;
 				if('/' == *pstr)
 				{
-					if(*(pstr+1) == '>')
+					if(NULL != pstr+1 && *(pstr+1) == '>')
 					{
 						node->type = 0;
 						return pskip(pstr+2);
@@ -1630,9 +1783,11 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value, s
 			return endp+strlen(endbuf);
 			
 			
-		}else if(*c == '>')//不带属性节点,节点头，找到节点尾，遍历中间解析
+		}else if(*c == '>' || *skip(c) == '>')//不带属性节点,节点头，找到节点尾，遍历中间解析
+		//}else if(*c == '>')//不带属性节点,节点头，找到节点尾，遍历中间解析
 		{
 			sprintf(endbuf,"</%s>",node->name);//尾节点名称构造
+			temp=skip(c);
 			endp = strstr(temp+1,endbuf);
 			if(!endp)
 			{
@@ -1671,7 +1826,7 @@ XEXPORT XAPI const char* sxml_node_parse(sxml_node_t* node, const char* value, s
 		{
 			if(*(c+1) == '>')
 			{
-				node->type = 4;
+				node->type = 0;
 				return pskip(c+2);
 			}else
 			{

@@ -13,6 +13,6 @@
 	c = 100;
 	return a;
 end</lua>内部字符串<!--注释-->
-    <empty/>
+    <empty />
     <subnode>内部字符串</subnode>
 </root>
