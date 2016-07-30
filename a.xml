@@ -12,7 +12,15 @@
 	if a < 10 && b >5 then
 	c = 100;
 	return a;
-end</lua>内部字符串<!--注释-->
+end</lua>
+    <?lua function fun()
+	int a,b,c;
+	a = 10;
+	b = 5;
+	if a < 10 && b >5 then
+	c = 100;
+	return a;
+end?>内部字符串<!--注释-->
     <empty />
     <subnode>内部字符串</subnode>
 </root>

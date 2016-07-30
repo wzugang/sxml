@@ -27,18 +27,23 @@ int main()
 	
 	sxml_node_t* subnode = sxml_node_new("score");
 	sxml_node_t* subnode2 = sxml_node_new("subnode");
-	sxml_node_t* rawdata = sxml_rawdata_new(NULL,"hello world!",strlen("hello world!")); 
-	sxml_node_t* rawdata2 = sxml_rawdata_new(NULL,"hello world!",strlen("hello world!")); 
-	sxml_node_t* rawdata3 = sxml_rawdata_new(NULL,"hello world!",strlen("hello world!")); 
-	sxml_node_t* rawdata4 = sxml_rawdata_new("raw","rawdata",strlen("rawdata")); 
-	sxml_node_t* rawdata5 = sxml_rawdata_new("lua",LUA_SCRIPT,strlen(LUA_SCRIPT)); 
+	sxml_node_t* rawdata = sxml_rawdata_new("hello world!",strlen("hello world!")); 
+	sxml_node_t* rawdata2 = sxml_rawdata_new("hello world!",strlen("hello world!")); 
+	sxml_node_t* rawdata3 = sxml_rawdata_new("hello world!",strlen("hello world!")); 
+	sxml_node_t* userdef = sxml_userdef_new("raw",NULL,"rawdata",strlen("rawdata")); 
+	sxml_node_t* userdef2 = sxml_userdef_new("lua",NULL,LUA_SCRIPT,strlen(LUA_SCRIPT)); 
+	sxml_node_t* userdef3 = sxml_userdef_new("<?lua ","?>",LUA_SCRIPT,strlen(LUA_SCRIPT)); 
 	sxml_node_t* innertext = sxml_innertext_new("ÄÚ²¿×Ö·û´®");
 	sxml_node_t* innertext2 = sxml_innertext_new("ÄÚ²¿×Ö·û´®");
 	sxml_node_t* comment = sxml_comment_new("×¢ÊÍ");
 	sxml_node_t* empty = sxml_node_new("empty");
 	sxml_parser_t* parser_t = sxml_parser_new();
-	sxml_alias_t* alias = sxml_alias_new("<<?lua", "?>>");
+	sxml_alias_t* alias = sxml_alias_new("raw", NULL);
+	sxml_alias_t* alias2 = sxml_alias_new("lua", NULL);
+	sxml_alias_t* alias3 = sxml_alias_new("<?lua ", "?>");
 	sxml_add_alias2parser(parser_t, alias);
+	sxml_add_alias2parser(parser_t, alias2);
+	sxml_add_alias2parser(parser_t, alias3);
 	
 	sxml_add_attr2node(node,attr);
 	attr = sxml_attr_new("sex","man");
@@ -55,8 +60,9 @@ int main()
 	sxml_add_subnode2node(node,rawdata);
 	sxml_add_subnode2node(node,rawdata2);
 	sxml_add_subnode2node(node,rawdata3);
-	sxml_add_subnode2node(node,rawdata4);
-	sxml_add_subnode2node(node,rawdata5);
+	sxml_add_subnode2node(node,userdef);
+	sxml_add_subnode2node(node,userdef2);
+	sxml_add_subnode2node(node,userdef3);
 	sxml_add_subnode2node(node,innertext);
 	sxml_add_subnode2node(node,comment);
 	sxml_add_subnode2node(node,empty);

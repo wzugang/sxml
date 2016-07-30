@@ -45,8 +45,8 @@ typedef struct __sxml_alias_t
 
 typedef struct __sxml_parser_t
 {
-	QUEUE rawdata;//对称节点
-	QUEUE userdef;//不对称节点
+	QUEUE normal;//对称节点
+	QUEUE special;//不对称节点
 }sxml_parser_t;
 
 //原始数据结构体，要不要类型
@@ -124,7 +124,8 @@ typedef struct __sxml_file_info_t
 
 XEXPORT XAPI 	sxml_doc_t* 		sxml_doc_new(const char* filename, const char* version, const char* charset);
 XEXPORT XAPI 	sxml_node_t* 		sxml_node_new(const char* name);
-XEXPORT XAPI 	sxml_node_t* 		sxml_rawdata_new(const char* name, const void* data, long long size);
+XEXPORT XAPI 	sxml_node_t* 		sxml_rawdata_new(const void* data, long long size);
+XEXPORT XAPI 	sxml_node_t* 		sxml_userdef_new(const char* start, const char* end, const void* data, long long size);
 XEXPORT XAPI 	sxml_node_t*		sxml_innertext_new(const char* innertext);
 XEXPORT XAPI 	sxml_node_t* 		sxml_comment_new(const char* comment);
 XEXPORT XAPI 	sxml_attr_t* 		sxml_attr_new(const char* name, const char* value);
