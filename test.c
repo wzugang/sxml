@@ -35,7 +35,7 @@ int main()
 	sxml_node_t* userdef3 = sxml_userdef_new("<?lua ","?>",LUA_SCRIPT,strlen(LUA_SCRIPT)); 
 	sxml_node_t* innertext = sxml_innertext_new("ÄÚ²¿×Ö·û´®");
 	sxml_node_t* innertext2 = sxml_innertext_new("ÄÚ²¿×Ö·û´®");
-	sxml_node_t* comment = sxml_comment_new("×¢ÊÍ");
+	sxml_node_t* comment = sxml_comment_new("×¢ÊÍ>>><<<");
 	sxml_node_t* empty = sxml_node_new("empty");
 	sxml_parser_t* parser_t = sxml_parser_new();
 	sxml_alias_t* alias = sxml_alias_new("raw", NULL);

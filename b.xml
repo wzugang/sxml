@@ -20,7 +20,7 @@ end</lua>
 	if a < 10 && b >5 then
 	c = 100;
 	return a;
-end?>内部字符串<!--注释-->
+end?>内部字符串<!--注释>>><<<-->
     <empty />
     <subnode>内部字符串</subnode>
 </root>

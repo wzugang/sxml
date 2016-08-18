@@ -14,7 +14,25 @@
 
 
 //转义字符处理等（待完成）
-//item为引用节点
+//内部文本:<
+//属性:"
+//XML转义字符
+//xmlstring = xmlstring.Replace("&", "&amp;");
+//xmlstring = xmlstring.Replace("<", "&lt;");
+////xmlstring = xmlstring.Replace(">", "&gt;");
+//xmlstring = xmlstring.Replace("\"", "&quot;");
+////xmlstring = xmlstring.Replace("\'", "&apos;");
+////字符转义
+//xmlstring = xmlstring.Replace("\a", "&#x7;");
+//xmlstring = xmlstring.Replace("\b", "&#x8;");
+//xmlstring = xmlstring.Replace("\f", "&#xC;");
+//xmlstring = xmlstring.Replace("\n", "&#xA;");
+//xmlstring = xmlstring.Replace("\r", "&#xD;");
+//xmlstring = xmlstring.Replace("\t", "&#x9;");
+//xmlstring = xmlstring.Replace("\v", "&#xB;");
+//xmlstring = xmlstring.Replace("\0", "&#x0;");
+
+//item为引用节点,主要用于优化性能（省内存，但是耗时间，暂且搁置）
 #define SXML_IS_REFERENCE 		128
 //节点名称为常量
 #define SXML_IS_STR_CONST		512
@@ -1115,8 +1133,15 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 				{
 					++numentries;
 				}
-				entries = (char**)sxml_alloc(numentries*sizeof(char*));
-				if(!entries) return NULL;
+				if(numentries > 0)
+				{
+					entries = (char**)sxml_alloc(numentries*sizeof(char*));
+					if(!entries) 
+					{
+						return NULL;
+					}
+				}
+				
 				if(!QUEUE_ISEMPTY(&node->attrs))
 				{				
 					entries[i++] = sxml_attr_print(node, p);
@@ -1209,7 +1234,10 @@ XEXPORT XAPI char* sxml_node_print(sxml_node_t* node, sxml_buffer_ht p)
 				{
 					sxml_free(entries[i]);
 				}
-				sxml_free(entries);
+				if(numentries > 0)
+				{
+					sxml_free(entries);
+				}
 				break;//普通节点，节点头左+节点属性+节点头右+子节点+节点尾
 			case 1: 
 				needed = strlen((char*)node->data)+10; 
